@@ -57,7 +57,7 @@ CREATE TABLE reservations (
     numero_reservation VARCHAR(50) UNIQUE NOT NULL,
     nombre_places INTEGER DEFAULT 1,
     prix_total DECIMAL(8,2) NOT NULL,
-    statut statut_reservation DEFAULT 'en_attente',
+    statut VARCHAR(50) DEFAULT 'en_attente',
     message_passager TEXT,
     date_reservation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     date_confirmation TIMESTAMP,
@@ -79,7 +79,7 @@ CREATE TABLE evaluations (
     id SERIAL PRIMARY KEY,
     note INTEGER NOT NULL CHECK (note >= 1 AND note <= 5),
     commentaire TEXT,
-    type_eval type_evaluation NOT NULL
+    type_eval VARCHAR(50) NOT NULL
 );
 
 -- Table des messages

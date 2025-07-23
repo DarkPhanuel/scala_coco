@@ -10,7 +10,6 @@ import scala.util.{Failure, Success, Try}
 object MenuPrincipal  {
 
 
-  // Variables pour simuler l'état de l'application
   private var utilisateurConnecte: Option[models.Utilisateur] = None
   private var running = true
 
@@ -60,26 +59,28 @@ object MenuPrincipal  {
     println("5. Supprimer un trajet")
     println("6. Afficher mes trajets à venir")
     println("7. Afficher mes trajets passés")
+    println("8. Lister tous les trajets")
     println()
     println("RÉSERVATIONS")
     println("8. Rechercher un trajet")
-    println("9. Mes réservations")
-    println("10. Annuler une réservation")
+    println("9. Réserver un trajet")
+    println("10. Mes réservations")
+    println("11. Annuler une réservation")
     println()
     println("PAIEMENTS")
-    println("11. Simuler un paiement")
-    println("12. Historique des paiements")
+    println("12. Simuler un paiement")
+    println("13. Historique des paiements")
     println()
     println("NOTATIONS")
-    println("13. Noter un utilisateur")
-    println("14. Voir mes notes")
+    println("14. Noter un utilisateur")
+    println("15. Voir mes notes")
     println()
     println("MESSAGERIE")
-    println("15. Envoyer un message")
-    println("16. Voir mes messages")
+    println("16. Envoyer un message")
+    println("17. Voir mes messages")
     println()
-    println("17. Se déconnecter")
-    println("18. Quitter l'application")
+    println("18. Se déconnecter")
+    println("19. Quitter l'application")
     println("="*60)
     print("Votre choix : ")
 
@@ -99,33 +100,97 @@ object MenuPrincipal  {
       case "5" => supprimerTrajet()
       case "6" => afficherTrajetsAVenir()
       case "7" => afficherTrajetsPasses()
+      case "8" => afficherTousLesTrajets()
 
       // Réservations
       case "8" => rechercherTrajet()
-      case "9" => afficherMesReservations()
-      case "10" => annulerReservation()
+      case "9" => reserverTrajet()
+      case "10" => afficherMesReservations()
+      case "11" => annulerReservation()
 
       // Paiements
-      case "11" => simulerPaiement()
-      case "12" => historiquePaiements()
+      case "12" => simulerPaiement()
+      case "13" => historiquePaiements()
 
       // Notations
-      case "13" => noterUtilisateur()
-      case "14" => voirMesNotes()
+      case "14" => noterUtilisateur()
+      case "15" => voirMesNotes()
 
       // Messagerie
-      case "15" => envoyerMessage()
-      case "16" => voirMessages()
+      case "16" => envoyerMessage()
+      case "17" => voirMessages()
 
       // Déconnexion/Sortie
-      case "17" =>
+      case "18" =>
         utilisateurConnecte = None
         println("Déconnexion réussie.")
-      case "18" =>
+      case "19" =>
         println("Au revoir !")
         running = false
       case _ => println("Choix invalide. Veuillez réessayer.")
     }
+  }
+
+  // Nouvelle fonction pour réserver un trajet
+  def reserverTrajet(): Unit = {
+    println("\n--- RÉSERVER UN TRAJET ---")
+    print("Ville de départ : ")
+    val depart = StdIn.readLine()
+    print("Ville d'arrivée : ")
+    val arrivee = StdIn.readLine()
+    print("Date (JJ/MM/AAAA) : ")
+    val dateStr = StdIn.readLine()
+    val formatter = java.time.format.DateTimeFormatter.ofPattern("d/M/yyyy")
+    val date = Try(java.time.LocalDate.parse(dateStr, formatter)).getOrElse(java.time.LocalDate.now())
+    val trajets = dao.TrajetDAO.rechercherTrajets(depart, arrivee, date)
+    if (trajets.isEmpty) {
+      println(s"Aucun trajet trouvé pour $depart → $arrivee le $dateStr.")
+      return
+    }
+    trajets.zipWithIndex.foreach { case (t, i) =>
+      println(s"${i + 1}. Départ: ${t.ville_depart} → ${t.ville_arrivee} - ${t.date_depart} à ${t.heure_depart} - ${t.prix_par_place}€ (${t.places_totales} places)")
+    }
+    print("\nNuméro du trajet à réserver (0 pour annuler) : ")
+    val choix = StdIn.readLine()
+    if (choix != "0") {
+      Try(choix.toInt).toOption.filter(n => n > 0 && n <= trajets.length) match {
+        case Some(idx) =>
+          val trajet = trajets(idx - 1)
+          print("Combien de places souhaitez-vous réserver ? ")
+          val places = Try(StdIn.readLine().toInt).getOrElse(1)
+          utilisateurConnecte match {
+            case Some(u) =>
+              val reservation = models.Reservation(
+                id = 0,
+                numeroReservation = java.util.UUID.randomUUID().toString,
+                nombrePlaces = places,
+                prixTotal = java.math.BigDecimal.valueOf(trajet.prix_par_place * places),
+                statut = "en_attente",
+                messagePassager = None,
+                dateReservation = new java.sql.Timestamp(System.currentTimeMillis()),
+                dateConfirmation = None,
+                dateAnnulation = None,
+                motifAnnulation = None,
+                passager = u
+              )
+              val resId = dao.ReservationDAO.creerReservation(reservation, trajet.id, u.id, trajet.conducteur.id)
+              if (resId > 0) println("Réservation confirmée !") else println("Erreur lors de la réservation.")
+            case None => println("Aucun utilisateur connecté.")
+          }
+        case None => println("Numéro invalide.")
+      }
+    }
+  }
+
+  // Nouvelle fonction pour lister tous les trajets
+  def afficherTousLesTrajets(): Unit = {
+    println("\n--- TOUS LES TRAJETS ---")
+    val trajets = dao.TrajetDAO.getAllTrajets()
+    if (trajets.isEmpty) println("Aucun trajet trouvé.")
+    else trajets.zipWithIndex.foreach { case (t, i) =>
+      println(s"${i + 1}. ${t.ville_depart} → ${t.ville_arrivee} - ${t.date_depart} à ${t.heure_depart} | Conducteur: ${t.conducteur.nom} (${t.conducteur.email}) | ${t.prix_par_place}€ (${t.places_totales} places)")
+    }
+    attendre()
   }
 
   // ===== FONCTIONS DE GESTION DU COMPTE =====
@@ -464,7 +529,7 @@ object MenuPrincipal  {
                 numeroReservation = java.util.UUID.randomUUID().toString,
                 nombrePlaces = places,
                 prixTotal = java.math.BigDecimal.valueOf(trajet.prix_par_place * places),
-                statut = "En attente",
+                statut = "en_attente",
                 messagePassager = None,
                 dateReservation = new java.sql.Timestamp(System.currentTimeMillis()),
                 dateConfirmation = None,
@@ -472,7 +537,7 @@ object MenuPrincipal  {
                 motifAnnulation = None,
                 passager = u
               )
-              val resId = ReservationDAO.creerReservation(reservation)
+              val resId = dao.ReservationDAO.creerReservation(reservation, trajet.id, u.id, trajet.conducteur.id)
               if (resId > 0) println("Réservation confirmée !") else println("Erreur lors de la réservation.")
             case None => println("Aucun utilisateur connecté.")
           }
@@ -485,28 +550,41 @@ object MenuPrincipal  {
 
   def simulerPaiement(): Unit = {
     println("\n--- SIMULER UN PAIEMENT ---")
-    print("Montant (€) : ")
-    val montant = BigDecimal(Try(StdIn.readLine().toDouble).getOrElse(0.0))
-    print("Destinataire (email) : ")
-    val destinataireEmail = StdIn.readLine()
-    print("Motif : ")
-    val motif = StdIn.readLine()
     utilisateurConnecte match {
       case Some(u) =>
+        import DB.DB.connection
+        // Sélection de la réservation à payer
+        val reservations = ReservationDAO.getReservationsPourUtilisateur(u.id)
+        if (reservations.isEmpty) {
+          println("Aucune réservation à payer.")
+          return
+        }
+        println("Sélectionnez la réservation à payer :")
+        reservations.zipWithIndex.foreach { case (r, i) =>
+          println(s"${i + 1}. ${r.numeroReservation} - ${r.prixTotal}€ - ${r.statut}")
+        }
+        print("Numéro de la réservation : ")
+        val num = Try(StdIn.readLine().toInt).getOrElse(1)
+        val reservation = reservations.lift(num - 1).getOrElse(reservations.head)
+        print("Montant (€) : ")
+        val montant = BigDecimal(Try(StdIn.readLine().toDouble).getOrElse(0.0))
+        print("Destinataire (email) : ")
+        val destinataireEmail = StdIn.readLine()
         val destinataireOpt = dao.UtilisateurDAO.findByUsername(destinataireEmail)
+        print("Motif : ")
+        val motif = StdIn.readLine()
         destinataireOpt match {
           case Some(dest) =>
             val paiement = models.Paiement(
               id = 0,
               numeroTransaction = java.util.UUID.randomUUID().toString,
               montant = montant,
-              reservation = null, // à compléter si besoin
+              reservation = reservation,
               statut = "Effectué",
               datePaiement = Some(java.time.LocalDate.now())
             )
-            import DB.DB.connection
-            if (dao.PaiementDAO.creerPaiement(paiement)(connection))
-              println(s"Paiement de $montant€ vers ${dest.nom} effectué avec succès !")
+            if (dao.PaiementDAO.creerPaiement(paiement, reservation.id, u.id, dest.id)(connection))
+              println(s"Paiement de $montant€ vers ${dest.nom} effectué avec succès pour la réservation ${reservation.numeroReservation} !")
             else
               println("Erreur lors de l'enregistrement du paiement.")
           case None => println("Destinataire introuvable.")

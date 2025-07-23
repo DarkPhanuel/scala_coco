@@ -76,13 +76,56 @@ object PaiementDAO {
   }
 
   // Créer un paiement
-  def creerPaiement(p: Paiement)(implicit conn: Connection): Boolean = create(p)
+  def creerPaiement(p: Paiement, reservationId: Int, payeurId: Int, beneficiaireId: Int)(implicit conn: Connection): Boolean = {
+    val sql =
+      """
+        |INSERT INTO paiements (numero_transaction, montant, statut, date_paiement)
+        |VALUES (?, ?, ?, ?)
+        |""".stripMargin
+    try {
+      val stmt = conn.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)
+      stmt.setString(1, p.numeroTransaction)
+      stmt.setBigDecimal(2, p.montant.bigDecimal)
+      stmt.setString(3, p.statut)
+      val ts: Timestamp = p.datePaiement match {
+        case Some(date) => Timestamp.valueOf(date.atStartOfDay())
+        case None       => null
+      }
+      stmt.setTimestamp(4, ts)
+      val rows = stmt.executeUpdate()
+      if (rows > 0) {
+        val keys = stmt.getGeneratedKeys
+        if (keys.next()) {
+          val paiementId = keys.getInt(1)
+          // Lier le paiement à la réservation
+          val stmtLink = conn.prepareStatement("INSERT INTO reservation_paiement (reservation_id, paiement_id, payeur_id, beneficiaire_id) VALUES (?, ?, ?, ?)")
+          stmtLink.setInt(1, reservationId)
+          stmtLink.setInt(2, paiementId)
+          stmtLink.setInt(3, payeurId)
+          stmtLink.setInt(4, beneficiaireId)
+          stmtLink.executeUpdate() > 0
+        } else false
+      } else false
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        false
+    }
+  }
 
-  // Récupérer les paiements d'un utilisateur
+  // Récupérer les paiements d'un utilisateur (par jointure sur reservation_paiement)
   def getPaiementsPourUtilisateur(utilisateurId: Int)(implicit conn: Connection): List[Paiement] = {
     try {
-      val stmt = conn.prepareStatement("SELECT * FROM paiements WHERE reservation_id IN (SELECT id FROM reservations WHERE passager_id = ?)")
+      val sql = """
+        SELECT p.* FROM paiements p
+        JOIN reservation_paiement rp ON p.id = rp.paiement_id
+        JOIN reservations r ON rp.reservation_id = r.id
+        WHERE rp.payeur_id = ? OR rp.beneficiaire_id = ?
+        ORDER BY p.date_paiement DESC
+      """
+      val stmt = conn.prepareStatement(sql)
       stmt.setInt(1, utilisateurId)
+      stmt.setInt(2, utilisateurId)
       val rs = stmt.executeQuery()
       val result = ListBuffer[Paiement]()
       while (rs.next()) {

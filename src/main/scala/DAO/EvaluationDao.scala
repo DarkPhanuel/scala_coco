@@ -9,7 +9,7 @@ object EvaluationDao {
     val sql =
       """
       INSERT INTO evaluations (
-        note, commentaire, type_evaluation
+        note, commentaire, type_eval
       )
       VALUES (?, ?, ?)
       """
@@ -93,7 +93,7 @@ object EvaluationDao {
           id = rs.getInt("id"),
           note = rs.getInt("note"),
           commentaire = Option(rs.getString("commentaire")),
-          typeEvaluation = rs.getString("type_evaluation"),
+          typeEvaluation = rs.getString("type_eval"),
           trajet = null, // à compléter selon le modèle
           evaluateur = null, // à compléter selon le modèle
           evalue = null // à compléter selon le modèle
