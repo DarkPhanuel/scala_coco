@@ -1,7 +1,7 @@
 package models
 
 import java.sql.Timestamp
-case class Messagerie(
+case class Message(
                     id: Int,
                     numeroMessage: String,
                     //sujet: Option[String],
@@ -10,12 +10,13 @@ case class Messagerie(
                     dateLecture: Option[Timestamp],
                     typeMessage: String = "general",
                     statut: String = "envoye",
-                    //relations
-                    expediteurId: Int,
-                    destinataireId: Int,
-                    trajetId: Option[Int],
+                    expediteur: Utilisateur,
+                    destinataire: Utilisateur,
+                    trajetId: Trajet,
                     reservationId: Option[Int],
                     messageParentId: Option[Int],
                     createdAt: Timestamp)
+
+
 
 

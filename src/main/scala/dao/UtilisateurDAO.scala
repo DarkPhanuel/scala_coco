@@ -4,7 +4,6 @@ import DB.DB
 
 object UtilisateurDAO {
 
-
 def findAll(): Seq[models.Utilisateur] = {
     val query = "SELECT * FROM utilisateurs"
     val statement = DB.connection.prepareStatement(query)
@@ -59,7 +58,7 @@ def findByUsername(username: String): Option[models.Utilisateur] = {
 
 def register(utilisateur: models.Utilisateur): Boolean = {
     val query = "INSERT INTO utilisateurs (email, mot_de_passe, nom, prenom, telephone, est_conducteur, ville, code_postal, note_moyenne, nombre_evaluations, statut) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    val statement = DB.connection.prepareStatement(query)
+    val statement = DB.connection.prepareStatement(query, java.sql.Statement.RETURN_GENERATED_KEYS)
     statement.setString(1, utilisateur.email)
     statement.setString(2, utilisateur.mot_de_passe)
     statement.setString(3, utilisateur.nom)
@@ -71,6 +70,52 @@ def register(utilisateur: models.Utilisateur): Boolean = {
     statement.setDouble(9, utilisateur.note_moyenne)
     statement.setInt(10, utilisateur.nombre_evaluations)
     statement.setString(11, utilisateur.statut)
+   val ids = statement.getGeneratedKeys
+   if (ids.next()) {
+    val idVehicule = ids.getInt(1)
+    val requeteLiaison = "INSERT INTO vehicule_utilisateur (utilisateur_id, vehicule_id) VALUES (?, ?)"
+    val statementLiaison = DB.connection.prepareStatement(requeteLiaison)
+    for (vehicule <- utilisateur.vehicules) {
+      statementLiaison.setInt(1, idVehicule)
+      statementLiaison.setInt(2, vehicule.id)
+      statementLiaison.executeUpdate()
+    }
+
+  } else {
+    throw new RuntimeException("Échec de l'insertion du produit, aucune clé générée.")
+  }
+
+    try {
+      statement.executeUpdate() > 0
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        false
+    }
+  }
+
+
+def affecterUnVehicule(utilisateur: models.Utilisateur, vehicule: models.Vehicule): Boolean = {
+    val query = "INSERT INTO vehicule_utilisateur (utilisateur_id, vehicule_id) VALUES (?, ?)"
+    val statement = DB.connection.prepareStatement(query)
+    statement.setString(1, utilisateur.email)
+    statement.setInt(2, vehicule.id)
+
+    try {
+      statement.executeUpdate() > 0
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        false
+    }
+  }
+
+
+def choisirUnTrajet(utilisateur: models.Utilisateur, trajet: models.Trajet): Boolean = {
+    val query = "INSERT INTO trajet_utilisateur (utilisateur_id, trajet_id) VALUES (?, ?)"
+    val statement = DB.connection.prepareStatement(query)
+    statement.setString(1, utilisateur.email)
+    statement.setInt(2, trajet.id)
 
     try {
       statement.executeUpdate() > 0

@@ -13,5 +13,5 @@ case class Reservation(
                         dateReservation: Timestamp,
                         dateConfirmation: Option[Timestamp],
                         dateAnnulation: Option[Timestamp],
-                        motifAnnulation: Option[String]
+                        motifAnnulation: Option[String],
                       )

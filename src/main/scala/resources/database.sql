@@ -85,7 +85,6 @@ CREATE TABLE evaluations (
 CREATE TABLE messages (
                           id INT PRIMARY KEY AUTO_INCREMENT,
                           numero_message VARCHAR(50) UNIQUE NOT NULL,
-                          sujet VARCHAR(255),
                           contenu TEXT NOT NULL,
                           lu BOOLEAN DEFAULT FALSE,
                           date_lecture TIMESTAMP,
