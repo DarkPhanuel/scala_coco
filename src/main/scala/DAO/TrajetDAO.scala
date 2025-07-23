@@ -1,4 +1,4 @@
-package DAO
+package dao
 
 import java.sql._
 import java.time.{LocalDate, LocalDateTime}
