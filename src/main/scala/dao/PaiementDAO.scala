@@ -74,4 +74,32 @@ object PaiementDAO {
         None
     }
   }
+
+  // Créer un paiement
+  def creerPaiement(p: Paiement)(implicit conn: Connection): Boolean = create(p)
+
+  // Récupérer les paiements d'un utilisateur
+  def getPaiementsPourUtilisateur(utilisateurId: Int)(implicit conn: Connection): List[Paiement] = {
+    try {
+      val stmt = conn.prepareStatement("SELECT * FROM paiements WHERE reservation_id IN (SELECT id FROM reservations WHERE passager_id = ?)")
+      stmt.setInt(1, utilisateurId)
+      val rs = stmt.executeQuery()
+      val result = ListBuffer[Paiement]()
+      while (rs.next()) {
+        val dateOpt: Option[LocalDate] = Option(rs.getTimestamp("date_paiement")).map(_.toLocalDateTime.toLocalDate)
+        result += Paiement(
+          id = rs.getInt("id"),
+          numeroTransaction = rs.getString("numero_transaction"),
+          montant = rs.getBigDecimal("montant"),
+          statut = rs.getString("statut"),
+          datePaiement = dateOpt
+        )
+      }
+      result.toList
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        List()
+    }
+  }
 }

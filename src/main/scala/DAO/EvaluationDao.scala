@@ -133,4 +133,30 @@ object EvaluationDao {
         false
     }
   }
+
+  // Récupérer les commentaires reçus par un utilisateur
+  def getCommentairesRecus(userId: Int): List[String] = {
+    val sql =
+      """
+      SELECT e.commentaire
+      FROM evaluations e
+      JOIN evaluation_relation er ON e.id = er.evaluation_id
+      WHERE er.evalue_id = ? AND e.commentaire IS NOT NULL
+      ORDER BY e.id DESC
+      """
+    try {
+      val stmt = DB.connection.prepareStatement(sql)
+      stmt.setInt(1, userId)
+      val rs: ResultSet = stmt.executeQuery()
+      var commentaires: List[String] = List()
+      while (rs.next()) {
+        commentaires ::= rs.getString("commentaire")
+      }
+      commentaires.reverse
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        List()
+    }
+  }
 }

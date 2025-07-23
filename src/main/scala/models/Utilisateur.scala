@@ -1,5 +1,7 @@
 package models
 
+import java.time.{LocalDate, LocalTime}
+
 case class Utilisateur(
   id: Int=0,                    
 email: String,
@@ -24,3 +26,5 @@ evaluationsDonnees: Seq[Evaluation] = Seq.empty,
 evaluationsRecues: Seq[Evaluation] = Seq.empty
 
 )
+
+

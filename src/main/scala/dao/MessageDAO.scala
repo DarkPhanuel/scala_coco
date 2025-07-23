@@ -38,5 +38,71 @@ object MessageDAO {
         -1
     }
   }
+
+  // Récupérer les messages reçus par un utilisateur
+  def getMessagesRecus(utilisateurId: Int): List[Message] = {
+    val sql = "SELECT m.* FROM messages m JOIN message_relation mr ON m.id = mr.message_id WHERE mr.destinataire_id = ? ORDER BY m.createdAt DESC"
+    try {
+      val stmt = connection.prepareStatement(sql)
+      stmt.setInt(1, utilisateurId)
+      val rs = stmt.executeQuery()
+      var messages: List[Message] = List()
+      while (rs.next()) {
+        messages ::= Message(
+          id = rs.getInt("id"),
+          numeroMessage = rs.getString("numero_message"),
+          contenu = rs.getString("contenu"),
+          lu = rs.getBoolean("lu"),
+          dateLecture = Option(rs.getTimestamp("date_lecture")),
+          typeMessage = rs.getString("type_message"),
+          statut = rs.getString("statut"),
+          expediteur = null, // à compléter si besoin
+          destinataire = null, // à compléter si besoin
+          trajetId = null, // à compléter si besoin
+          reservationId = None,
+          messageParentId = None,
+          createdAt = rs.getTimestamp("createdAt")
+        )
+      }
+      messages.reverse
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        List()
+    }
+  }
+
+  // Récupérer les messages envoyés par un utilisateur
+  def getMessagesEnvoyes(utilisateurId: Int): List[Message] = {
+    val sql = "SELECT m.* FROM messages m JOIN message_relation mr ON m.id = mr.message_id WHERE mr.expediteur_id = ? ORDER BY m.createdAt DESC"
+    try {
+      val stmt = connection.prepareStatement(sql)
+      stmt.setInt(1, utilisateurId)
+      val rs = stmt.executeQuery()
+      var messages: List[Message] = List()
+      while (rs.next()) {
+        messages ::= Message(
+          id = rs.getInt("id"),
+          numeroMessage = rs.getString("numero_message"),
+          contenu = rs.getString("contenu"),
+          lu = rs.getBoolean("lu"),
+          dateLecture = Option(rs.getTimestamp("date_lecture")),
+          typeMessage = rs.getString("type_message"),
+          statut = rs.getString("statut"),
+          expediteur = null, // à compléter si besoin
+          destinataire = null, // à compléter si besoin
+          trajetId = null, // à compléter si besoin
+          reservationId = None,
+          messageParentId = None,
+          createdAt = rs.getTimestamp("createdAt")
+        )
+      }
+      messages.reverse
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        List()
+    }
+  }
 }
 

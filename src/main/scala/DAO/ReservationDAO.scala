@@ -1,3 +1,4 @@
+package dao
 import java.sql.{Connection, ResultSet, Statement}
 import scala.collection.mutable.ListBuffer
 import scala.math.BigDecimal.javaBigDecimal2bigDecimal
@@ -87,6 +88,63 @@ object ReservationDAO {
       case e: Exception =>
         e.printStackTrace()
         false
+    }
+  }
+
+  // Récupérer les réservations d'un utilisateur
+  def getReservationsPourUtilisateur(utilisateurId: Int): List[Reservation] = {
+    val sql = "SELECT * FROM reservations WHERE passager_id = ?"
+    try {
+      val stmt = connection.prepareStatement(sql)
+      stmt.setInt(1, utilisateurId)
+      val rs = stmt.executeQuery()
+      val reservations = ListBuffer[Reservation]()
+      while (rs.next()) {
+        reservations += fromResultSet(rs)
+      }
+      reservations.toList
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        List()
+    }
+  }
+
+  // Annuler une réservation (update statut)
+  def annulerReservation(reservationId: Int): Boolean = {
+    val sql = "UPDATE reservations SET statut = 'Annulée' WHERE id = ?"
+    try {
+      val stmt = connection.prepareStatement(sql)
+      stmt.setInt(1, reservationId)
+      stmt.executeUpdate() > 0
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        false
+    }
+  }
+
+  // Créer une réservation
+  def creerReservation(res: Reservation): Int = {
+    val sql =
+      """INSERT INTO reservations (numero_reservation, nombre_places, prix_total, statut, message_passager, date_reservation, passager_id)
+         |VALUES (?, ?, ?, ?, ?, ?, ?)""".stripMargin
+    try {
+      val stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
+      stmt.setString(1, res.numeroReservation)
+      stmt.setInt(2, res.nombrePlaces)
+      stmt.setBigDecimal(3, res.prixTotal.bigDecimal)
+      stmt.setString(4, res.statut)
+      stmt.setString(5, res.messagePassager.orNull)
+      stmt.setTimestamp(6, res.dateReservation)
+      stmt.setInt(7, res.passager.id)
+      stmt.executeUpdate()
+      val keys = stmt.getGeneratedKeys
+      if (keys.next()) keys.getInt(1) else -1
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        -1
     }
   }
 
