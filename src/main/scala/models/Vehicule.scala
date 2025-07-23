@@ -6,7 +6,7 @@ case class Vehicule(
                      marque: String,
                      modele: String,
                      nombrePlaces: Int = 4,
-                     annee: Option[Int],
+                     annee: Int,
                      statut: String = "actif"
                    )
 
