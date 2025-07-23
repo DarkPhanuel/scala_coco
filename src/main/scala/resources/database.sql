@@ -89,8 +89,8 @@ CREATE TABLE messages (
     contenu TEXT NOT NULL,
     lu BOOLEAN DEFAULT FALSE,
     date_lecture TIMESTAMP,
-    type_msg type_message DEFAULT 'general',
-    statut_msg statut_message DEFAULT 'envoye'
+    type_msg VARCHAR(50) UNIQUE NOT NULL DEFAULT 'general',
+    statut_msg VARCHAR(50) UNIQUE NOT NULL DEFAULT 'envoye'
 );
 
 -- TABLES DE LIAISON (Relations)

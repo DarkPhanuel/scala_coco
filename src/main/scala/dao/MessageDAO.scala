@@ -8,7 +8,7 @@ object MessageDAO {
 
   def envoyerUnMessage(message: Message): Int = {
     val sql =
-      """INSERT INTO messages (numero_message, contenu, lu, date_lecture, type_message, statut)
+      """INSERT INTO messages (numero_message, contenu, lu, date_lecture, type_msg, statut_msg)
          |VALUES (?, ?, ?, ?, ?, ?)""".stripMargin
     try {
       val stmt: PreparedStatement = connection.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)
@@ -41,28 +41,32 @@ object MessageDAO {
 
   // Récupérer les messages reçus par un utilisateur
   def getMessagesRecus(utilisateurId: Int): List[Message] = {
-    val sql = "SELECT m.* FROM messages m JOIN message_relation mr ON m.id = mr.message_id WHERE mr.destinataire_id = ? ORDER BY m.createdAt DESC"
+    val sql =
+      """
+      SELECT m.*, mr.created_at AS relation_created_at
+      FROM messages m
+      JOIN message_relation mr ON m.id = mr.message_id
+      WHERE mr.expediteur_id = ?
+      ORDER BY mr.created_at DESC
+    """
     try {
       val stmt = connection.prepareStatement(sql)
       stmt.setInt(1, utilisateurId)
       val rs = stmt.executeQuery()
       var messages: List[Message] = List()
       while (rs.next()) {
-        messages ::= Message(
+        messages = Message(
           id = rs.getInt("id"),
           numeroMessage = rs.getString("numero_message"),
+          typeMessage = rs.getString("type_msg"),
           contenu = rs.getString("contenu"),
           lu = rs.getBoolean("lu"),
           dateLecture = Option(rs.getTimestamp("date_lecture")),
-          typeMessage = rs.getString("type_message"),
-          statut = rs.getString("statut"),
-          expediteur = null, // à compléter si besoin
-          destinataire = null, // à compléter si besoin
-          trajetId = null, // à compléter si besoin
-          reservationId = None,
-          messageParentId = None,
-          createdAt = rs.getTimestamp("createdAt")
-        )
+          statut = rs.getString("statut_msg"),
+          expediteur = null, 
+          destinataire = null, 
+          createdAt = rs.getTimestamp("relation_created_at")
+        ) :: messages
       }
       messages.reverse
     } catch {
@@ -74,28 +78,33 @@ object MessageDAO {
 
   // Récupérer les messages envoyés par un utilisateur
   def getMessagesEnvoyes(utilisateurId: Int): List[Message] = {
-    val sql = "SELECT m.* FROM messages m JOIN message_relation mr ON m.id = mr.message_id WHERE mr.expediteur_id = ? ORDER BY m.createdAt DESC"
+    val sql =
+      """
+      SELECT m.*, mr.created_at AS relation_created_at
+      FROM messages m
+      JOIN message_relation mr ON m.id = mr.message_id
+      WHERE mr.expediteur_id = ?
+      ORDER BY mr.created_at DESC
+    """
+
     try {
       val stmt = connection.prepareStatement(sql)
       stmt.setInt(1, utilisateurId)
       val rs = stmt.executeQuery()
       var messages: List[Message] = List()
       while (rs.next()) {
-        messages ::= Message(
+        messages = Message(
           id = rs.getInt("id"),
           numeroMessage = rs.getString("numero_message"),
+          typeMessage = rs.getString("type_msg"),
           contenu = rs.getString("contenu"),
           lu = rs.getBoolean("lu"),
           dateLecture = Option(rs.getTimestamp("date_lecture")),
-          typeMessage = rs.getString("type_message"),
-          statut = rs.getString("statut"),
-          expediteur = null, // à compléter si besoin
-          destinataire = null, // à compléter si besoin
-          trajetId = null, // à compléter si besoin
-          reservationId = None,
-          messageParentId = None,
-          createdAt = rs.getTimestamp("createdAt")
-        )
+          statut = rs.getString("statut_msg"),
+          expediteur = null,
+          destinataire = null,
+          createdAt = rs.getTimestamp("relation_created_at")
+        ) :: messages
       }
       messages.reverse
     } catch {

@@ -597,16 +597,13 @@ object MenuPrincipal  {
             val message = models.Message(
               id = 0,
               numeroMessage = java.util.UUID.randomUUID().toString,
+              typeMessage = sujet,
               contenu = contenu,
               lu = false,
               dateLecture = None,
-              typeMessage = sujet,
               statut = "envoye",
               expediteur = expediteur,
               destinataire = destinataire,
-              trajetId = null,
-              reservationId = None,
-              messageParentId = None,
               createdAt = new java.sql.Timestamp(System.currentTimeMillis())
             )
             val res = dao.MessageDAO.envoyerUnMessage(message)
