@@ -1,6 +1,7 @@
 package models
 
 case class Utilisateur(
+  id: Int=0,                    
 email: String,
 mot_de_passe: String,
 nom: String,
@@ -15,6 +16,8 @@ statut: String,
                       
 // Relations :
 vehicules: Seq[Vehicule] = Seq.empty,
+messagesEnvoyes: Seq[Message] = Seq.empty,
+messagesRecus: Seq[Message] = Seq.empty,
 trajetsConducteur: Seq[Trajet] = Seq.empty,
 reservationsPassager: Seq[Reservation] = Seq.empty,
 evaluationsDonnees: Seq[Evaluation] = Seq.empty,

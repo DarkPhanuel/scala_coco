@@ -1,10 +1,11 @@
-package DAO
-import java.sql.{Connection, PreparedStatement, ResultSet, Statement, Timestamp}
+import java.sql.{Connection, ResultSet, Statement}
 import scala.collection.mutable.ListBuffer
-import java.math.BigDecimal
+import scala.math.BigDecimal.javaBigDecimal2bigDecimal
 import models.Reservation
 
-class ReservationDAO(connection: Connection) {
+object ReservationDAO {
+  
+  private val connection: Connection = DB.DB.connection;
 
   def create(res: Reservation): Int = {
     val sql =
