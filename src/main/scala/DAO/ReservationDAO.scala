@@ -1,84 +1,107 @@
-package DAO
-import java.sql.{Connection, PreparedStatement, ResultSet, Statement, Timestamp}
+package dao
+
+import DB.DB
+import models.Reservation
+import java.sql.{PreparedStatement, ResultSet, Timestamp}
 import scala.collection.mutable.ListBuffer
 import java.math.BigDecimal
-import models.Reservation
 
-class ReservationDAO(connection: Connection) {
+object ReservationDAO {
 
-  def create(res: Reservation): Int = {
-    val sql =
-      """INSERT INTO reservations (numero_reservation, nombre_places, prix_total, statut, message_passager,
-        | date_reservation, date_confirmation, date_annulation, motif_annulation)
-        | VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""".stripMargin
+  def findAll(): Seq[Reservation] = {
+    val query = "SELECT * FROM reservations"
+    val statement = DB.connection.prepareStatement(query)
+    val resultSet = statement.executeQuery()
+    var reservations: Seq[Reservation] = Seq.empty
 
-    val stmt = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
-    stmt.setString(1, res.numeroReservation)
-    stmt.setInt(2, res.nombrePlaces)
-    stmt.setBigDecimal(3, res.prixTotal.bigDecimal)
-    stmt.setString(4, res.statut)
-    stmt.setString(5, res.messagePassager.orNull)
-    stmt.setTimestamp(6, res.dateReservation)
-    stmt.setTimestamp(7, res.dateConfirmation.orNull)
-    stmt.setTimestamp(8, res.dateAnnulation.orNull)
-    stmt.setString(9, res.motifAnnulation.orNull)
-
-    stmt.executeUpdate()
-    val keys = stmt.getGeneratedKeys
-    if (keys.next()) keys.getInt(1) else -1
-  }
-
-  def getById(id: Int): Option[Reservation] = {
-    val sql = "SELECT * FROM reservations WHERE id = ?"
-    val stmt = connection.prepareStatement(sql)
-    stmt.setInt(1, id)
-    val rs = stmt.executeQuery()
-
-    if (rs.next()) Some(fromResultSet(rs)) else None
-  }
-
-  def getAll(): List[Reservation] = {
-    val sql = "SELECT * FROM reservations"
-    val stmt = connection.createStatement()
-    val rs = stmt.executeQuery(sql)
-
-    val reservations = ListBuffer[Reservation]()
-    while (rs.next()) {
-      reservations += fromResultSet(rs)
+    while (resultSet.next()) {
+      val reservation = fromResultSet(resultSet)
+      reservations :+= reservation
     }
-    reservations.toList
+
+    reservations
   }
 
-  def updateStatut(id: Int, statut: String): Boolean = {
-    val sql = "UPDATE reservations SET statut = ? WHERE id = ?"
-    val stmt = connection.prepareStatement(sql)
-    stmt.setString(1, statut)
-    stmt.setInt(2, id)
+  def findById(id: Int): Option[Reservation] = {
+    val query = "SELECT * FROM reservations WHERE id = ?"
+    val statement = DB.connection.prepareStatement(query)
+    statement.setInt(1, id)
+    val resultSet = statement.executeQuery()
 
-    stmt.executeUpdate() > 0
+    if (resultSet.next()) Some(fromResultSet(resultSet)) else None
+  }
+
+  def create(res: Reservation): Boolean = {
+    val query = """
+      |INSERT INTO reservations (
+      |  numero_reservation, nombre_places, prix_total, statut, message_passager,
+      |  date_reservation, date_confirmation, date_annulation, motif_annulation)
+      |VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""".stripMargin
+
+    val statement = DB.connection.prepareStatement(query)
+    statement.setString(1, res.numeroReservation)
+    statement.setInt(2, res.nombrePlaces)
+    statement.setBigDecimal(3, res.prixTotal.bigDecimal)
+    statement.setString(4, res.statut)
+    statement.setString(5, res.messagePassager.orNull)
+    statement.setTimestamp(6, res.dateReservation)
+    statement.setTimestamp(7, res.dateConfirmation.orNull)
+    statement.setTimestamp(8, res.dateAnnulation.orNull)
+    statement.setString(9, res.motifAnnulation.orNull)
+
+    try {
+      statement.executeUpdate() > 0
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        false
+    }
+  }
+
+  def update(res: Reservation): Boolean = {
+    val query = """
+      |UPDATE reservations SET
+      |  nombre_places = ?, prix_total = ?, statut = ?, message_passager = ?,
+      |  date_reservation = ?, date_confirmation = ?, date_annulation = ?, motif_annulation = ?
+      |WHERE id = ?""".stripMargin
+
+    val statement = DB.connection.prepareStatement(query)
+    statement.setInt(1, res.nombrePlaces)
+    statement.setBigDecimal(2, res.prixTotal.bigDecimal)
+    statement.setString(3, res.statut)
+    statement.setString(4, res.messagePassager.orNull)
+    statement.setTimestamp(5, res.dateReservation)
+    statement.setTimestamp(6, res.dateConfirmation.orNull)
+    statement.setTimestamp(7, res.dateAnnulation.orNull)
+    statement.setString(8, res.motifAnnulation.orNull)
+    statement.setInt(9, res.id)
+
+    try {
+      statement.executeUpdate() > 0
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        false
+    }
   }
 
   def delete(id: Int): Boolean = {
-    val sql = "DELETE FROM reservations WHERE id = ?"
-    val stmt = connection.prepareStatement(sql)
-    stmt.setInt(1, id)
+    val query = "DELETE FROM reservations WHERE id = ?"
+    val statement = DB.connection.prepareStatement(query)
+    statement.setInt(1, id)
 
-    stmt.executeUpdate() > 0
+    try {
+      statement.executeUpdate() > 0
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        false
+    }
   }
 
   private def fromResultSet(rs: ResultSet): Reservation = {
     Reservation(
-      rs.getInt("id"),
-      rs.getString("numero_reservation"),
-      rs.getInt("nombre_places"),
-      rs.getBigDecimal("prix_total"),
-      rs.getString("statut"),
-      Option(rs.getString("message_passager")),
-      rs.getTimestamp("date_reservation"),
-      Option(rs.getTimestamp("date_confirmation")),
-      Option(rs.getTimestamp("date_annulation")),
-      Option(rs.getString("motif_annulation"))
-    )
-  }
-}
-
+      id = rs.getInt("id"),
+      numeroReservation = rs.getString("numero_reservation"),
+      nombrePlaces = rs.getInt("nombre_places"),
+      prixTotal = rs.getBigDecimal("prix_total"),
