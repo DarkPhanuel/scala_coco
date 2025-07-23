@@ -1,12 +1,17 @@
 package menu
 
+import dao.{EvaluationDao, TrajetDAO, UtilisateurDAO}
+
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import scala.io.StdIn
-import scala.util.{Try, Success, Failure}
+import scala.util.{Failure, Success, Try}
 
 object MenuPrincipal  {
 
+
   // Variables pour simuler l'état de l'application
-  private var utilisateurConnecte: Option[String] = None
+  private var utilisateurConnecte: Option[models.Utilisateur] = None
   private var running = true
 
   // Démarrage de l'application
@@ -125,29 +130,65 @@ object MenuPrincipal  {
 
   // ===== FONCTIONS DE GESTION DU COMPTE =====
 
+
   def inscription(): Unit = {
     println("\n--- INSCRIPTION ---")
-    print("Nom d'utilisateur : ")
+    print("Email : ")
+    val email = StdIn.readLine()
+    print("Nom: ")
     val nom = StdIn.readLine()
+    print("Prenom: ")
+    val prenom = StdIn.readLine()
+    print("Mot de passe : ")
+    val motDePasse = StdIn.readLine()
+    print("Téléphone : ")
+    val telephone = StdIn.readLine()
+    print("Ville : ")
+    val ville = StdIn.readLine()
+    print("Code postal : ")
+    val codePostal = StdIn.readLine()
+    print("Êtes-vous conducteur ? (oui/non) : ")
+    val estConducteur = StdIn.readLine().toLowerCase match {
+      case "oui" => true
+      case "non" => false
+      case _ =>
+        println("Réponse invalide, par défaut vous n'êtes pas conducteur.")
+        false
+    }
+    val userId:Int = UtilisateurDAO.register(
+      models.Utilisateur(
+        email = email,
+        mot_de_passe = motDePasse,
+        nom = nom,
+        prenom = prenom,
+        telephone = telephone,
+        est_conducteur = estConducteur,
+        ville = ville,
+        code_postal = codePostal,
+        note_moyenne = 0.0,
+        nombre_evaluations = 0,
+        statut = "Actif"
+      )
+    )
+    utilisateurConnecte =  UtilisateurDAO.getUtilisateurById(userId);
+  }
+
+  def connexion(): Unit = {
+    println("\n--- CONNEXION ---")
     print("Email : ")
     val email = StdIn.readLine()
     print("Mot de passe : ")
     val motDePasse = StdIn.readLine()
 
-    println(s"Inscription réussie pour $nom !")
-    utilisateurConnecte = Some(nom)
-  }
+    val utilisateur = UtilisateurDAO.login(email, motDePasse)
 
-  def connexion(): Unit = {
-    println("\n--- CONNEXION ---")
-    print("Nom d'utilisateur : ")
-    val nom = StdIn.readLine()
-    print("Mot de passe : ")
-    val motDePasse = StdIn.readLine()
-
-    // Simulation de la vérification
-    println(s"Connexion réussie ! Bienvenue $nom")
-    utilisateurConnecte = Some(nom)
+    utilisateur match {
+      case Some(u) => {
+        utilisateurConnecte = utilisateur
+        println("Connexion réussie !")
+      }
+      case None => println("Mot de passe ou email incorrect. Veuillez réessayer.")
+    }
   }
 
   def modifierCompte(): Unit = {
@@ -158,9 +199,14 @@ object MenuPrincipal  {
     val nouvelEmail = StdIn.readLine()
 
     if (nouveauNom.nonEmpty) {
-      utilisateurConnecte = Some(nouveauNom)
+      utilisateurConnecte = utilisateurConnecte.map(u => u.copy(nom = nouveauNom))
+      utilisateurConnecte = utilisateurConnecte.map(u => u.copy(email = nouvelEmail))
     }
 
+    utilisateurConnecte match {
+      case Some(u) => UtilisateurDAO.update(u)
+      case None    => println("Aucun utilisateur connecté, update ignoré.")
+    }
     println("Compte modifié avec succès !")
   }
 
@@ -170,7 +216,12 @@ object MenuPrincipal  {
     val confirmation = StdIn.readLine().toLowerCase
 
     if (confirmation == "oui") {
-      println("Compte supprimé avec succès.")
+
+      utilisateurConnecte match {
+        case Some(u) =>       UtilisateurDAO.supprimerUtilisateur(u.id);
+
+        case None => println("Aucun utilisateur connecté, update ignoré.")
+      }
       utilisateurConnecte = None
     } else {
       println("Suppression annulée.")
@@ -194,6 +245,8 @@ object MenuPrincipal  {
   // ===== FONCTIONS DE GESTION DES TRAJETS =====
 
   def proposerTrajet(): Unit = {
+    val formatter = DateTimeFormatter.ofPattern("d/M/yyyy")
+
     println("\n--- PROPOSER UN TRAJET ---")
     print("Ville de départ : ")
     val depart = StdIn.readLine()
@@ -201,14 +254,44 @@ object MenuPrincipal  {
     val arrivee = StdIn.readLine()
     print("Date (JJ/MM/AAAA) : ")
     val date = StdIn.readLine()
-    print("Heure (HH:MM) : ")
-    val heure = StdIn.readLine()
-    print("Nombre de places disponibles : ")
-    val places = StdIn.readLine()
-    print("Prix par personne (€) : ")
+    print("Prix par place : ")
     val prix = StdIn.readLine()
+    print("Places Total : ")
+    val placesTotal = StdIn.readLine()
 
-    println(s"Trajet $depart → $arrivee le $date à $heure proposé avec succès !")
+
+    utilisateurConnecte match {
+      case Some(u) => {
+
+        val trajet: models.Trajet = models.Trajet(
+          id = 0, // ID sera généré par la base de données
+          ville_depart = depart,
+          ville_arrivee = arrivee,
+          prix_par_place = prix.toInt,
+          places_totales = placesTotal.toInt,
+          statut = "Proposé",
+          vehicule = models.Vehicule(
+            id = 0, // ID sera généré par la base de données
+            immatriculation = "ABC123", // À remplacer par une logique d'affectation de véhicule
+            marque = "Marque",
+            modele = "Modèle",
+            nombrePlaces = placesTotal.toInt,
+            annee = 2025, // À remplacer par l'année actuelle ou une logique d'affectation
+            statut = "Disponible"
+          ),
+          conducteur = u // Utilisateur connecté est le conducteur
+        )
+
+        TrajetDAO.proposerUnTrajet(
+          trajet = trajet
+        )
+        println("Connexion réussie !")
+      }
+      case None => println("Mot de passe ou email incorrect. Veuillez réessayer.")
+    }
+
+
+
   }
 
   def supprimerTrajet(): Unit = {

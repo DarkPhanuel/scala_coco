@@ -4,19 +4,15 @@ import DB.DB
 import java.sql.{PreparedStatement, ResultSet, Timestamp}
 import models.Evaluation
 
-
-
 object EvaluationDao {
-  
   def noterUnUtilisateur(evaluation: Evaluation): Int = {
     val sql =
       """
       INSERT INTO evaluations (
-       note, commentaire, type_evaluation
+        note, commentaire, type_evaluation
       )
       VALUES (?, ?, ?)
       """
-
     val sqlRelation =
       """
       INSERT INTO evaluation_relation (
@@ -24,83 +20,30 @@ object EvaluationDao {
       )
       VALUES (?, ?, ?, ?, ?)
       """
-
     try {
       val stmt: PreparedStatement = DB.connection.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)
       stmt.setInt(1, evaluation.note)
       stmt.setString(2, evaluation.commentaire.orNull)
       stmt.setString(3, evaluation.typeEvaluation)
+      stmt.executeUpdate()
       val ids = stmt.getGeneratedKeys
       if (ids.next()) {
-        val idUtilisateur = ids.getInt(1)
-        val requeteLiaison = "INSERT INTO evaluation_relation (evaluation_id, trajet_id, evaluateur_id, evalue_id) VALUES (?, ?)"
-        val statementLiaison = DB.connection.prepareStatement(requeteLiaison)
-        statementLiaison.setInt(1, evaluation.id)
-        statementLiaison.setInt(2, evaluation.trajet.id)
-        statementLiaison.setInt(3, evaluation.evaluateur.id)
-        statementLiaison.setInt(4, evaluation.evalue.id)
-        statementLiaison.executeUpdate()
-      } else {
-        throw new RuntimeException("Échec de l'insertion du message, aucune clé générée.")
-      }
-    } catch {
-      case e: Exception =>
-        e.printStackTrace();
-        1
-    }
-  }
-  
- /* private val connection: java.sql.Connection = DB.connection
-
-  // ajouter une évaluation (note d'un utilisateur à un autre pour un trajet)
-  def noter(evaluation: Evaluation): Boolean = {
-    val sql =
-      """
-      INSERT INTO evaluations (
-        code_evaluation, note, commentaire, type_evaluation, date_evaluation
-      )
-      VALUES (?, ?, ?, ?, ?) RETURNING id
-      """
-
-    val sqlRelation =
-      """
-      INSERT INTO evaluation_relation (
-        evaluation_id, trajet_id, evaluateur_id, evalue_id, created_at
-      )
-      VALUES (?, ?, ?, ?, ?)
-      """
-
-    try {
-      // insérer l'évaluation principale avec RETURNING
-      val stmt: PreparedStatement = connection.prepareStatement(sql)
-
-      stmt.setString(1, evaluation.codeEvaluation)
-      stmt.setInt(2, evaluation.note)
-      stmt.setString(3, evaluation.commentaire.orNull)
-      stmt.setString(4, evaluation.typeEvaluation)
-      stmt.setTimestamp(5, evaluation.dateEvaluation)
-
-      val rs = stmt.executeQuery() // executeQuery pour RETURNING
-
-      if (rs.next()) {
-        val evaluationId = rs.getInt("id")
-
-        // insérer la relation
-        val stmtRelation: PreparedStatement = connection.prepareStatement(sqlRelation)
+        val evaluationId = ids.getInt(1)
+        val stmtRelation: PreparedStatement = DB.connection.prepareStatement(sqlRelation)
         stmtRelation.setInt(1, evaluationId)
-        stmtRelation.setInt(2, evaluation.trajetId)
-        stmtRelation.setInt(3, evaluation.evaluateurId)
-        stmtRelation.setInt(4, evaluation.evalueId)
-        stmtRelation.setTimestamp(5, evaluation.createdAt)
-
-        stmtRelation.executeUpdate() > 0
+        stmtRelation.setInt(2, evaluation.trajet.id)
+        stmtRelation.setInt(3, evaluation.evaluateur.id)
+        stmtRelation.setInt(4, evaluation.evalue.id)
+        stmtRelation.setTimestamp(5, new Timestamp(System.currentTimeMillis()))
+        stmtRelation.executeUpdate()
+        evaluationId
       } else {
-        false
+        throw new RuntimeException("Échec de l'insertion de l'évaluation, aucune clé générée.")
       }
     } catch {
       case e: Exception =>
         e.printStackTrace()
-        false
+        -1
     }
   }
 
@@ -113,11 +56,9 @@ object EvaluationDao {
       JOIN evaluation_relation er ON e.id = er.evaluation_id
       WHERE er.evalue_id = ?
       """
-
     try {
-      val stmt = connection.prepareStatement(sql)
+      val stmt = DB.connection.prepareStatement(sql)
       stmt.setInt(1, userId)
-
       val rs: ResultSet = stmt.executeQuery()
       if (rs.next()) {
         val moyenne = rs.getDouble("moyenne")
@@ -140,32 +81,25 @@ object EvaluationDao {
       FROM evaluations e
       JOIN evaluation_relation er ON e.id = er.evaluation_id
       WHERE er.evalue_id = ?
-      ORDER BY e.date_evaluation DESC
+      ORDER BY e.id DESC
       """
-
     try {
-      val stmt = connection.prepareStatement(sql)
+      val stmt = DB.connection.prepareStatement(sql)
       stmt.setInt(1, userId)
-
       val rs: ResultSet = stmt.executeQuery()
       var evaluations: List[Evaluation] = List()
-
       while (rs.next()) {
         val evaluation = Evaluation(
           id = rs.getInt("id"),
-          codeEvaluation = rs.getString("code_evaluation"),
           note = rs.getInt("note"),
           commentaire = Option(rs.getString("commentaire")),
           typeEvaluation = rs.getString("type_evaluation"),
-          dateEvaluation = rs.getTimestamp("date_evaluation"),
-          trajetId = rs.getInt("trajet_id"),
-          evaluateurId = rs.getInt("evaluateur_id"),
-          evalueId = rs.getInt("evalue_id"),
-          createdAt = rs.getTimestamp("created_at")
+          trajet = null, // à compléter selon le modèle
+          evaluateur = null, // à compléter selon le modèle
+          evalue = null // à compléter selon le modèle
         )
         evaluations = evaluation :: evaluations
       }
-
       evaluations.reverse
     } catch {
       case e: Exception =>
@@ -174,49 +108,7 @@ object EvaluationDao {
     }
   }
 
-  // 🔹 Obtenir toutes les évaluations faites par un utilisateur
-  def getEvaluationsFaites(userId: Int): List[Evaluation] = {
-    val sql =
-      """
-      SELECT e.*, er.trajet_id, er.evaluateur_id, er.evalue_id, er.created_at
-      FROM evaluations e
-      JOIN evaluation_relation er ON e.id = er.evaluation_id
-      WHERE er.evaluateur_id = ?
-      ORDER BY e.date_evaluation DESC
-      """
-
-    try {
-      val stmt = connection.prepareStatement(sql)
-      stmt.setInt(1, userId)
-
-      val rs: ResultSet = stmt.executeQuery()
-      var evaluations: List[Evaluation] = List()
-
-      while (rs.next()) {
-        val evaluation = Evaluation(
-          id = rs.getInt("id"),
-          codeEvaluation = rs.getString("code_evaluation"),
-          note = rs.getInt("note"),
-          commentaire = Option(rs.getString("commentaire")),
-          typeEvaluation = rs.getString("type_evaluation"),
-          dateEvaluation = rs.getTimestamp("date_evaluation"),
-          trajetId = rs.getInt("trajet_id"),
-          evaluateurId = rs.getInt("evaluateur_id"),
-          evalueId = rs.getInt("evalue_id"),
-          createdAt = rs.getTimestamp("created_at")
-        )
-        evaluations = evaluation :: evaluations
-      }
-
-      evaluations.reverse
-    } catch {
-      case e: Exception =>
-        e.printStackTrace()
-        List()
-    }
-  }
-
-  // 🔹 Vérifier si un utilisateur a déjà évalué un autre pour un trajet donné
+  // Vérifier si un utilisateur a déjà évalué un autre pour un trajet donné
   def dejaEvalue(evaluateurId: Int, evalueId: Int, trajetId: Int): Boolean = {
     val sql =
       """
@@ -224,13 +116,11 @@ object EvaluationDao {
       FROM evaluation_relation
       WHERE evaluateur_id = ? AND evalue_id = ? AND trajet_id = ?
       """
-
     try {
-      val stmt = connection.prepareStatement(sql)
+      val stmt = DB.connection.prepareStatement(sql)
       stmt.setInt(1, evaluateurId)
       stmt.setInt(2, evalueId)
       stmt.setInt(3, trajetId)
-
       val rs: ResultSet = stmt.executeQuery()
       if (rs.next()) {
         rs.getInt("count") > 0
@@ -242,5 +132,5 @@ object EvaluationDao {
         e.printStackTrace()
         false
     }
-  }*/
+  }
 }
