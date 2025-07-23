@@ -8,5 +8,5 @@ case class Paiement(
                      numeroTransaction: String,
                      montant: BigDecimal,
                      statut: String,
-                     datePaiement: LocalDate
-                   )
+                     datePaiement: Option[LocalDate]                 
+)
