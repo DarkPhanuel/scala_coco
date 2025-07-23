@@ -10,7 +10,7 @@ CREATE TABLE utilisateurs (
                               nom VARCHAR(100) NOT NULL,
                               prenom VARCHAR(100) NOT NULL,
                               telephone VARCHAR(20),
-                              adresse TEXT,
+                              est_conducteur BOOLEAN DEFAULT FALSE,
                               ville VARCHAR(100),
                               code_postal VARCHAR(10),
                               note_moyenne DECIMAL(3,2) DEFAULT 0.00,
