@@ -2,7 +2,7 @@ package dao
 
 import DB.DB
 import models.Reservation
-import java.sql.{PreparedStatement, ResultSet, Timestamp}
+import java.sql.{PreparedStatement, ResultSet, Timestamp, Date}
 import scala.collection.mutable.ListBuffer
 import java.math.BigDecimal
 
@@ -29,6 +29,53 @@ object ReservationDAO {
     val resultSet = statement.executeQuery()
 
     if (resultSet.next()) Some(fromResultSet(resultSet)) else None
+  }
+
+  def findByUtilisateurId(utilisateurId: Int): Seq[Reservation] = {
+    val query = """
+      |SELECT r.* FROM reservations r
+      |JOIN trajet_reservation tr ON r.id = tr.reservation_id
+      |WHERE tr.passager_id = ?""".stripMargin
+    val statement = DB.connection.prepareStatement(query)
+    statement.setInt(1, utilisateurId)
+    val resultSet = statement.executeQuery()
+
+    var reservations: Seq[Reservation] = Seq.empty
+    while (resultSet.next()) {
+      val reservation = fromResultSet(resultSet)
+      reservations :+= reservation
+    }
+
+    reservations
+  }
+
+  def findTrajetsReserves(utilisateurId: Int): Seq[Int] = {
+    val query = "SELECT trajet_id FROM trajet_reservation WHERE passager_id = ?"
+    val statement = DB.connection.prepareStatement(query)
+    statement.setInt(1, utilisateurId)
+    val resultSet = statement.executeQuery()
+
+    var trajets: Seq[Int] = Seq.empty
+    while (resultSet.next()) {
+      trajets :+= resultSet.getInt("trajet_id")
+    }
+
+    trajets
+  }
+
+  def annulerReservation(id: Int, motif: String): Boolean = {
+    val query = "UPDATE reservations SET statut = 'annulee', date_annulation = CURRENT_TIMESTAMP, motif_annulation = ? WHERE id = ?"
+    val statement = DB.connection.prepareStatement(query)
+    statement.setString(1, motif)
+    statement.setInt(2, id)
+
+    try {
+      statement.executeUpdate() > 0
+    } catch {
+      case e: Exception =>
+        e.printStackTrace()
+        false
+    }
   }
 
   def create(res: Reservation): Boolean = {
@@ -105,3 +152,12 @@ object ReservationDAO {
       numeroReservation = rs.getString("numero_reservation"),
       nombrePlaces = rs.getInt("nombre_places"),
       prixTotal = rs.getBigDecimal("prix_total"),
+      statut = rs.getString("statut"),
+      messagePassager = Option(rs.getString("message_passager")),
+      dateReservation = rs.getTimestamp("date_reservation"),
+      dateConfirmation = Option(rs.getTimestamp("date_confirmation")),
+      dateAnnulation = Option(rs.getTimestamp("date_annulation")),
+      motifAnnulation = Option(rs.getString("motif_annulation"))
+    )
+  }
+}
