@@ -552,7 +552,7 @@ object MenuPrincipal  {
       case Some(u) =>
         import DB.DB.connection
         // Sélection de la réservation à payer
-        val reservations = ReservationDAO.getReservationsPourUtilisateur(u.id)
+        val reservations = ReservationDAO.getReservationsPourUtilisateur(u.id).filter(r => r.statut != "payé" && r.statut != "terminee")
         if (reservations.isEmpty) {
           println("Aucune réservation à payer.")
           return
@@ -564,28 +564,35 @@ object MenuPrincipal  {
         print("Numéro de la réservation : ")
         val num = Try(StdIn.readLine().toInt).getOrElse(1)
         val reservation = reservations.lift(num - 1).getOrElse(reservations.head)
-        print("Montant (€) : ")
-        val montant = BigDecimal(Try(StdIn.readLine().toDouble).getOrElse(0.0))
-        print("Destinataire (email) : ")
-        val destinataireEmail = StdIn.readLine()
-        val destinataireOpt = dao.UtilisateurDAO.findByUsername(destinataireEmail)
-        print("Motif : ")
-        val motif = StdIn.readLine()
-        destinataireOpt match {
-          case Some(dest) =>
-            val paiement = models.Paiement(
-              id = 0,
-              numeroTransaction = java.util.UUID.randomUUID().toString,
-              montant = montant,
-              reservation = reservation,
-              statut = "Effectué",
-              datePaiement = Some(java.time.LocalDate.now())
-            )
-            if (dao.PaiementDAO.creerPaiement(paiement, reservation.id, u.id, dest.id)(connection))
-              println(s"Paiement de $montant€ vers ${dest.nom} effectué avec succès pour la réservation ${reservation.numeroReservation} !")
-            else
-              println("Erreur lors de l'enregistrement du paiement.")
-          case None => println("Destinataire introuvable.")
+        if (reservation.statut == "payé") {
+          println("Cette réservation a déjà été payée.")
+          return
+        }
+        val montant = reservation.prixTotal
+        val conducteurId = {
+          // On récupère le conducteur du trajet lié à la réservation
+          val sql = "SELECT conducteur_id FROM trajet_reservation WHERE reservation_id = ? LIMIT 1"
+          val stmt = connection.prepareStatement(sql)
+          stmt.setInt(1, reservation.id)
+          val rs = stmt.executeQuery()
+          if (rs.next()) rs.getInt("conducteur_id") else 0
+        }
+        val paiement = models.Paiement(
+          id = 0,
+          numeroTransaction = java.util.UUID.randomUUID().toString,
+          montant = montant,
+          reservation = reservation,
+          statut = "payé",
+          datePaiement = Some(java.time.LocalDate.now())
+        )
+        if (dao.PaiementDAO.creerPaiement(paiement, reservation.id, u.id, conducteurId)(connection)) {
+          // Met à jour le statut de la réservation à 'payé'
+          val stmt = connection.prepareStatement("UPDATE reservations SET statut = 'payé' WHERE id = ?")
+          stmt.setInt(1, reservation.id)
+          stmt.executeUpdate()
+          println(s"Paiement de $montant€ effectué avec succès pour la réservation ${reservation.numeroReservation} !")
+        } else {
+          println("Erreur lors de l'enregistrement du paiement.")
         }
       case None => println("Aucun utilisateur connecté.")
     }
