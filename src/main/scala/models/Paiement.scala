@@ -3,9 +3,9 @@ package models
 import java.sql.Timestamp
 
 case class Paiement(
-                     id: Int = 0,
+                     id: Int,
                      numeroTransaction: String,
                      montant: BigDecimal,
-                     statut: String = "en_attente",
-                     datePaiement: Option[Timestamp] = None
+                     statut: String,
+                     datePaiement: LocalDate
                    )
