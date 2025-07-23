@@ -1,17 +1,17 @@
 package models
 
 import java.sql.Timestamp
+import java.math.BigDecimal
 
 case class Reservation(
-                      
-                        id : Int ,
-                        numero_reservation :  String,
-                        nombre_places :  Int,
-                        prix_total :  Int, 
-                        statut : String,
-                        message_passager :  String,
-                        date_reservation :  Timestamp ,
-                        date_confirmation :  Timestamp,
-                        date_annulation :  Timestamp,
-                        motif_annulation :  String,
+                        id: Int,
+                        numeroReservation: String,
+                        nombrePlaces: Int,
+                        prixTotal: BigDecimal,
+                        statut: String,
+                        messagePassager: Option[String],
+                        dateReservation: Timestamp,
+                        dateConfirmation: Option[Timestamp],
+                        dateAnnulation: Option[Timestamp],
+                        motifAnnulation: Option[String]
                       )
