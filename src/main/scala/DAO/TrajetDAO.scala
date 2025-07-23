@@ -1,13 +1,52 @@
 package dao
 
+import DB.DB
 import java.sql._
 import java.time.{LocalDate, LocalDateTime}
-import models.{Trajet, Utilisateur, UtilisateurDAO, Vehicule, VehiculeDAO}
 
 object TrajetDAO {
+  
+  
 
-  // Insère un trajet en base et le lie au conducteur et au véhicule
-  def insert(trajet: Trajet, conducteurId: Int, vehiculeId: Int): Int = {
+ def proposerUnTrajet(trajet: models.Trajet, conducteurId: Int, vehiculeId: Int): Int = {
+    val sql = """
+      INSERT INTO trajets (
+        ville_depart, ville_arrivee,
+        date_depart, prix_par_place, places_disponibles, places_totales,
+         statut
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """
+    val stmt = DB.connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
+    stmt.setString(1, trajet.ville_depart)
+    stmt.setString(2, trajet.ville_arrivee)
+    stmt.setDate(3, Date.valueOf(trajet.date_depart))
+    stmt.setInt(4, trajet.prix_par_place)
+    stmt.setInt(5, trajet.places_disponibles)
+    stmt.setInt(6, trajet.places_totales)
+    stmt.setString(7, trajet.statut)
+    
+    stmt.executeUpdate()
+    
+    val rs = stmt.getGeneratedKeys
+    if (rs.next()) {
+      val trajetId = rs.getInt(1)
+      // Enregistrement de la liaison entre utilisateur et trajet
+      val linkSql = """
+        INSERT INTO utilisateur_trajet (utilisateur_id, trajet_id, vehicule_id, role)
+        VALUES (?, ?, ?, 'conducteur')
+      """
+      val stmtLink = DB.connection.prepareStatement(linkSql)
+      stmtLink.setInt(1, conducteurId)
+      stmtLink.setInt(2, trajetId)
+      stmtLink.setInt(3, vehiculeId)
+      stmtLink.executeUpdate()
+      trajetId
+    } else 0
+  }
+
+
+ /* // Insère un trajet en base et le lie au conducteur et au véhicule
+  def insert(trajet: models.Trajet, conducteurId: Int, vehiculeId: Int): Int = {
     val sql = """
       INSERT INTO trajets (
         code_trajet, ville_depart, adresse_depart, ville_arrivee, adresse_arrivee,
@@ -49,17 +88,17 @@ object TrajetDAO {
   }
 
   // Récupère tous les trajets
-  def findAll(): List[Trajet] = {
+  def findAll(): List[models.Trajet] = {
     val sql = "SELECT * FROM trajets"
     val stmt = DB.connection.prepareStatement(sql)
     val rs = stmt.executeQuery()
-    val trajets = scala.collection.mutable.ListBuffer[Trajet]()
+    val trajets = scala.collection.mutable.ListBuffer[models.Trajet]()
     while (rs.next()) trajets += mapRowToTrajet(rs)
     trajets.toList
   }
 
   // Recherche des trajets par ville de départ, d'arrivée et date
-  def searchByVilleAndDate(villeDepart: String, villeArrivee: String, date: LocalDate): List[Trajet] = {
+  def searchByVilleAndDate(villeDepart: String, villeArrivee: String, date: LocalDate): List[models.Trajet] = {
     val sql = """
       SELECT * FROM trajets
       WHERE ville_depart = ? AND ville_arrivee = ? AND date_depart = ?
@@ -69,13 +108,13 @@ object TrajetDAO {
     stmt.setString(2, villeArrivee)
     stmt.setDate(3, Date.valueOf(date))
     val rs = stmt.executeQuery()
-    val trajets = scala.collection.mutable.ListBuffer[Trajet]()
+    val trajets = scala.collection.mutable.ListBuffer[models.Trajet]()
     while (rs.next()) trajets += mapRowToTrajet(rs)
     trajets.toList
   }
 
   // Recherche un trajet par son identifiant
-  def findById(id: Int): Option[Trajet] = {
+  def findById(id: Int): Option[models.Trajet] = {
     val sql = "SELECT * FROM trajets WHERE id = ?"
     val stmt = DB.connection.prepareStatement(sql)
     stmt.setInt(1, id)
@@ -100,7 +139,7 @@ object TrajetDAO {
   }
 
   // Récupère les trajets à venir d’un utilisateur (conducteur)
-  def trajetsAVenir(utilisateurId: Int): List[Trajet] = {
+  def trajetsAVenir(utilisateurId: Int): List[models.Trajet] = {
     val sql = """
       SELECT t.* FROM trajets t
       JOIN utilisateur_trajet ut ON ut.trajet_id = t.id
@@ -110,13 +149,13 @@ object TrajetDAO {
     val stmt = DB.connection.prepareStatement(sql)
     stmt.setInt(1, utilisateurId)
     val rs = stmt.executeQuery()
-    val trajets = scala.collection.mutable.ListBuffer[Trajet]()
+    val trajets = scala.collection.mutable.ListBuffer[models.Trajet]()
     while (rs.next()) trajets += mapRowToTrajet(rs)
     trajets.toList
   }
 
   // Récupère les trajets passés d’un utilisateur
-  def trajetsPasses(utilisateurId: Int): List[Trajet] = {
+  def trajetsPasses(utilisateurId: Int): List[models.Trajet] = {
     val sql = """
       SELECT t.* FROM trajets t
       JOIN utilisateur_trajet ut ON ut.trajet_id = t.id
@@ -126,13 +165,13 @@ object TrajetDAO {
     val stmt = DB.connection.prepareStatement(sql)
     stmt.setInt(1, utilisateurId)
     val rs = stmt.executeQuery()
-    val trajets = scala.collection.mutable.ListBuffer[Trajet]()
+    val trajets = scala.collection.mutable.ListBuffer[models.Trajet]()
     while (rs.next()) trajets += mapRowToTrajet(rs)
     trajets.toList
   }
 
   // Récupère le conducteur associé à un trajet
-  def conducteur(trajetId: Int): Option[Utilisateur] = {
+  def conducteur(trajetId: Int): Option[models.Utilisateur] = {
     val sql = """
       SELECT u.* FROM utilisateurs u
       JOIN utilisateur_trajet ut ON u.id = ut.utilisateur_id
@@ -145,11 +184,11 @@ object TrajetDAO {
   }
 
   // Fonction utilitaire pour convertir un ResultSet en objet Trajet complet
-  private def mapRowToTrajet(rs: ResultSet): Trajet = {
+  private def mapRowToTrajet(rs: ResultSet): models.Trajet = {
     val id = rs.getInt("id")
     val conducteur = conducteur(id)
     val vehicule = VehiculeDAO.findByTrajetId(id)
-    Trajet(
+    models.Trajet(
       id = id,
       code_trajet = rs.getString("code_trajet"),
       ville_depart = rs.getString("ville_depart"),
@@ -168,5 +207,5 @@ object TrajetDAO {
       conducteur = conducteur,
       vehicule = vehicule
     )
-  }
+  }*/
 } 

@@ -32,19 +32,11 @@ CREATE TABLE vehicules (
 -- Table des trajets
 CREATE TABLE trajets (
                          id INT PRIMARY KEY AUTO_INCREMENT,
-                         code_trajet VARCHAR(50) UNIQUE NOT NULL,
                          ville_depart VARCHAR(100) NOT NULL,
-                         adresse_depart TEXT,
                          ville_arrivee VARCHAR(100) NOT NULL,
-                         adresse_arrivee TEXT,
                          date_depart DATE NOT NULL,
-                         heure_depart TIME NOT NULL,
                          prix_par_place DECIMAL(8,2) NOT NULL,
-                         places_disponibles INT NOT NULL,
                          places_totales INT NOT NULL,
-                         distance_km INT,
-                         duree_estimee TIME,
-                         description TEXT,
                          statut ENUM('prevu', 'en_cours', 'termine', 'annule') DEFAULT 'prevu',
 );
 
@@ -74,11 +66,9 @@ CREATE TABLE paiements (
 -- Table des évaluations
 CREATE TABLE evaluations (
                              id INT PRIMARY KEY AUTO_INCREMENT,
-                             code_evaluation VARCHAR(50) UNIQUE NOT NULL,
                              note INT NOT NULL CHECK (note >= 1 AND note <= 5),
                              commentaire TEXT,
                              type_evaluation ENUM('conducteur', 'passager') NOT NULL,
-                             date_evaluation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 );
 
 -- Table des messages
@@ -98,8 +88,9 @@ CREATE TABLE messages (
 -- Liaison utilisateur-véhicule (propriété)
 CREATE TABLE utilisateur_vehicule (
                                       id INT PRIMARY KEY AUTO_INCREMENT,
-                                      utilisateur_id INT NOT NULL,
-                                      vehicule_id INT NOT NULL,
+                                      PRIMARY KEY (utilisateur_id, vehicule_id),
+                                      FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id) ON DELETE CASCADE,
+                                      FOREIGN KEY (vehicule_id) REFERENCES vehicules(id) ON DELETE CASCADE,
                                       type_relation ENUM('proprietaire', 'utilisateur_autorise') DEFAULT 'proprietaire',
                                       date_debut DATE DEFAULT (CURRENT_DATE),
                                       date_fin DATE,
@@ -110,8 +101,10 @@ CREATE TABLE utilisateur_vehicule (
 -- Liaison utilisateur-trajet (conducteur)
 CREATE TABLE utilisateur_trajet (
                                     id INT PRIMARY KEY AUTO_INCREMENT,
-                                    utilisateur_id INT NOT NULL,
-                                    trajet_id INT NOT NULL,
+
+                                    PRIMARY KEY (utilisateur_id, trajet_id),
+                                    FOREIGN KEY (utilisateur_id) REFERENCES utilisateurs(id) ON DELETE CASCADE,
+                                    FOREIGN KEY (trajet_id) REFERENCES trajets(id) ON DELETE CASCADE,
                                     vehicule_id INT NOT NULL,
                                     role ENUM('conducteur') DEFAULT 'conducteur',
                                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -120,9 +113,10 @@ CREATE TABLE utilisateur_trajet (
 -- Liaison trajet-réservation-utilisateur (passager)
 CREATE TABLE trajet_reservation (
                                     id INT PRIMARY KEY AUTO_INCREMENT,
-                                    trajet_id INT NOT NULL,
-                                    reservation_id INT NOT NULL,
-                                    passager_id INT NOT NULL,
+                                    PRIMARY KEY (trajet_id, reservation_id, passager_id),
+                                    FOREIGN KEY (trajet_id) REFERENCES trajets(id) ON DELETE CASCADE,
+                                    FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE,
+                                    FOREIGN KEY (passager_id) REFERENCES reservations(id) ON DELETE CASCADE,
                                     conducteur_id INT NOT NULL,
                                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -130,8 +124,9 @@ CREATE TABLE trajet_reservation (
 -- Liaison réservation-paiement
 CREATE TABLE reservation_paiement (
                                       id INT PRIMARY KEY AUTO_INCREMENT,
-                                      reservation_id INT NOT NULL,
-                                      paiement_id INT NOT NULL,
+                                      PRIMARY KEY (reservation_id, paiement_id),
+                                      FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE CASCADE,
+                                      FOREIGN KEY (paiement_id) REFERENCES paiements(id) ON DELETE CASCADE,
                                       payeur_id INT NOT NULL,
                                       beneficiaire_id INT NOT NULL,
                                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -140,34 +135,28 @@ CREATE TABLE reservation_paiement (
 -- Liaison évaluation-utilisateurs-trajet
 CREATE TABLE evaluation_relation (
                                      id INT PRIMARY KEY AUTO_INCREMENT,
-                                     evaluation_id INT NOT NULL,
-                                     trajet_id INT NOT NULL,
-                                     evaluateur_id INT NOT NULL,
-                                     evalue_id INT NOT NULL,
+                                    PRIMARY KEY (evaluation_id, trajet_id, evaluateur_id, evalue_id),
+                                    FOREIGN KEY (evaluation_id) REFERENCES evaluations(id) ON DELETE CASCADE,
+                                    FOREIGN KEY (trajet_id) REFERENCES trajets(id) ON DELETE CASCADE,
+                                    FOREIGN KEY (evaluateur_id) REFERENCES utilisateurs(id) ON DELETE CASCADE,
+                                    FOREIGN KEY (evalue_id) REFERENCES utilisateurs(id) ON DELETE CASCADE,
+                            
                                      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Liaison messages entre utilisateurs
 CREATE TABLE message_relation (
                                   id INT PRIMARY KEY AUTO_INCREMENT,
-                                  message_id INT NOT NULL,
-                                  expediteur_id INT NOT NULL,
-                                  destinataire_id INT NOT NULL,
+                                    PRIMARY KEY (message_id, expediteur_id, destinataire_id),
+                                    FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE,
+                                    FOREIGN KEY (expediteur_id) REFERENCES utilisateurs(id) ON DELETE CASCADE,
+                                    FOREIGN KEY (destinataire_id) REFERENCES utilisateurs(id) ON DELETE CASCADE,
                                   trajet_id INT,
                                   reservation_id INT,
                                   message_parent_id INT,
                                   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Liaison utilisateurs favoris
-CREATE TABLE utilisateur_favori (
-                                    id INT PRIMARY KEY AUTO_INCREMENT,
-                                    utilisateur_id INT NOT NULL,
-                                    favori_id INT NOT NULL,
-                                    type_favori ENUM('conducteur', 'passager', 'general') DEFAULT 'general',
-                                    note_personnelle TEXT,
-                                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
 
 -- INDEX POUR PERFORMANCES
 

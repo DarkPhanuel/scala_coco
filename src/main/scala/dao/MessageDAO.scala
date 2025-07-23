@@ -20,13 +20,12 @@ object MessageDAO {
     val ids = stmt.getGeneratedKeys
     if (ids.next()) {
       val idUtilisateur = ids.getInt(1)
-      val requeteLiaison = "INSERT INTO vehicule_utilisateur (message_id, expediteur_id, destinataire_id) VALUES (?, ?)"
+      val requeteLiaison = "INSERT INTO message_relation (message_id, expediteur_id, destinataire_id) VALUES (?, ?)"
       val statementLiaison = connection.prepareStatement(requeteLiaison)
       statementLiaison.setInt(1, message.id)
       statementLiaison.setInt(2, message.expediteur.id)
       statementLiaison.setInt(3, message.destinataire.id)
       statementLiaison.executeUpdate()
-
 
     } else {
       throw new RuntimeException("Échec de l'insertion du message, aucune clé générée.")

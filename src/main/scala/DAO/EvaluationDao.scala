@@ -1,10 +1,56 @@
 package dao
 
+import DB.DB
 import java.sql.{PreparedStatement, ResultSet, Timestamp}
 import models.Evaluation
-import DB.DB.connection
 
-object Evaluation_dao {
+
+
+object EvaluationDao {
+  
+  def noterUnUtilisateur(evaluation: Evaluation): Int = {
+    val sql =
+      """
+      INSERT INTO evaluations (
+       note, commentaire, type_evaluation
+      )
+      VALUES (?, ?, ?)
+      """
+
+    val sqlRelation =
+      """
+      INSERT INTO evaluation_relation (
+        evaluation_id, trajet_id, evaluateur_id, evalue_id, created_at
+      )
+      VALUES (?, ?, ?, ?, ?)
+      """
+
+    try {
+      val stmt: PreparedStatement = DB.connection.prepareStatement(sql, java.sql.Statement.RETURN_GENERATED_KEYS)
+      stmt.setInt(1, evaluation.note)
+      stmt.setString(2, evaluation.commentaire.orNull)
+      stmt.setString(3, evaluation.typeEvaluation)
+      val ids = stmt.getGeneratedKeys
+      if (ids.next()) {
+        val idUtilisateur = ids.getInt(1)
+        val requeteLiaison = "INSERT INTO evaluation_relation (evaluation_id, trajet_id, evaluateur_id, evalue_id) VALUES (?, ?)"
+        val statementLiaison = DB.connection.prepareStatement(requeteLiaison)
+        statementLiaison.setInt(1, evaluation.id)
+        statementLiaison.setInt(2, evaluation.trajet.id)
+        statementLiaison.setInt(3, evaluation.evaluateur.id)
+        statementLiaison.setInt(4, evaluation.evalue.id)
+        statementLiaison.executeUpdate()
+      } else {
+        throw new RuntimeException("Échec de l'insertion du message, aucune clé générée.")
+      }
+    } catch {
+      case e: Exception =>
+        e.printStackTrace();
+        1
+    }
+  }
+  
+ /* private val connection: java.sql.Connection = DB.connection
 
   // ajouter une évaluation (note d'un utilisateur à un autre pour un trajet)
   def noter(evaluation: Evaluation): Boolean = {
@@ -196,5 +242,5 @@ object Evaluation_dao {
         e.printStackTrace()
         false
     }
-  }
+  }*/
 }
