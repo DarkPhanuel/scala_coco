@@ -70,7 +70,7 @@ CREATE TABLE paiements (
     id SERIAL PRIMARY KEY,
     numero_transaction VARCHAR(50) UNIQUE NOT NULL,
     montant DECIMAL(8,2) NOT NULL,
-    statut statut_paiement DEFAULT 'en_attente',
+    statut VARCHAR(50) DEFAULT 'en_attente',
     date_paiement TIMESTAMP
 );
 
