@@ -62,7 +62,6 @@ object MenuPrincipal  {
     println("8. Lister tous les trajets")
     println()
     println("RÉSERVATIONS")
-    println("8. Rechercher un trajet")
     println("9. Réserver un trajet")
     println("10. Mes réservations")
     println("11. Annuler une réservation")
@@ -103,7 +102,6 @@ object MenuPrincipal  {
       case "8" => afficherTousLesTrajets()
 
       // Réservations
-      case "8" => rechercherTrajet()
       case "9" => reserverTrajet()
       case "10" => afficherMesReservations()
       case "11" => annulerReservation()
