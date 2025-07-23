@@ -1,7 +1,7 @@
 package models
 
 import java.sql.Timestamp
-case class messagerie(
+case class Messagerie(
                     id: Int,
                     numeroMessage: String,
                     //sujet: Option[String],

@@ -1,7 +1,9 @@
+package models
+
 import java.sql.Timestamp
 
 case class Reservation(
-                        
+                      
                         id : Int ,
                         numero_reservation :  String,
                         nombre_places :  Int,

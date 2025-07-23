@@ -2,7 +2,7 @@ package models
 
 import java.sql.Timestamp
 
-case class evaluation(
+case class Evaluation(
                        id: Int,
                        codeEvaluation: String,
                        note: Int,
